@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/apache/arrow/go/v8 v8.0.0
+	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.27.1
 )

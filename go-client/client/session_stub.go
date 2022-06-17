@@ -84,8 +84,15 @@ func (ref *refresher) refresh() error {
 	copy(oldToken, ref.token.Token)
 	ref.tokenMutex.Unlock()
 
+	ref.tokenMutex.Lock()
+	tok := make([]byte, len(ref.token.Token))
+	copy(tok, ref.token.Token)
+	ref.tokenMutex.Unlock()
+
+	ctx := metadata.NewOutgoingContext(ref.ctx, metadata.Pairs("deephaven_session_id", string(tok)))
+
 	handshakeReq := &sessionpb2.HandshakeRequest{AuthProtocol: 0, Payload: oldToken}
-	handshakeResp, err := ref.sessionStub.RefreshSessionToken(ref.ctx, handshakeReq)
+	handshakeResp, err := ref.sessionStub.RefreshSessionToken(ctx, handshakeReq)
 
 	if err != nil {
 		ref.tokenMutex.Lock()
