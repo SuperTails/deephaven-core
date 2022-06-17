@@ -36,6 +36,7 @@ func MakeRecord(timestamp time.Time, cpuTime float64, idle float64) arrow.Record
 }
 
 func ExampleCpuUsage() {
+	/* ================ Connect to the Server ===================== */
 	ctx := context.Background()
 
 	cl, err := client.NewClient(ctx, "localhost", "10000", "python")
@@ -44,6 +45,8 @@ func ExampleCpuUsage() {
 		return
 	}
 	defer cl.Close()
+
+	/* ================= Create an Input Table ===================== */
 
 	schema := arrow.NewSchema(
 		[]arrow.Field{
@@ -60,6 +63,8 @@ func ExampleCpuUsage() {
 		return
 	}
 	defer inputTable.Release(ctx)
+
+	/* =================== Perform a Query ================= */
 
 	timedQuery := inputTable.
 		Query().
@@ -85,7 +90,15 @@ func ExampleCpuUsage() {
 	defer joinedTable.Release(ctx)
 	defer cleanTable.Release(ctx)
 
-	err = cl.BindToVariable(ctx, "go_cpu_usage_raw", joinedTable)
+	/* ======= Bind the tables so that they are visible ============ */
+
+	err = cl.BindToVariable(ctx, "go_cpu_usage_raw", timedTable)
+	if err != nil {
+		fmt.Println("couldn't bind table to variable", err.Error())
+		return
+	}
+
+	err = cl.BindToVariable(ctx, "go_cpu_usage_full", joinedTable)
 	if err != nil {
 		fmt.Println("couldn't bind table to variable", err.Error())
 		return
@@ -98,6 +111,8 @@ func ExampleCpuUsage() {
 	}
 
 	for {
+		/* ====================== Upload CPU data to the server ======================== */
+
 		cpuStat, err := linuxproc.ReadStat("/proc/stat")
 		if err != nil {
 			fmt.Println("couldn't get stat", err.Error())
