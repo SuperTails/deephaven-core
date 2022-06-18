@@ -78,7 +78,8 @@ func ExampleCpuUsage() {
 			"TimeChange = diffNanos(PastTime, Timestamp) / 10000000.0", "CpuUtil = 100.0 * (1.0 - (IdleTimeChange / CpuTimeChange))")
 
 	cleanQuery := joinedQuery.
-		DropColumns("CpuTimeChange", "IdleTimeChange", "TimeChange", "PastCpuTime", "PastIdle", "PastTime")
+		DropColumns("CpuTimeChange", "IdleTimeChange", "TimeChange", "PastCpuTime", "PastIdle", "PastTime").
+		Tail(60)
 
 	tables, err := cl.ExecQuery(ctx, timedQuery, joinedQuery, cleanQuery)
 	if err != nil {
