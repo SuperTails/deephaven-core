@@ -193,3 +193,45 @@ jobs:
           remote_port: ${{ secrets.DOCS_PORT }}
           remote_user: ${{ secrets.DOCS_USER }}
           remote_key: ${{ secrets.DEEPHAVEN_CORE_SSH_KEY }}
+  
+  godoc:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+    
+      - name: Setup JDK 11
+        id: setup-java-11
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Set JAVA_HOME
+        run: echo "JAVA_HOME=${{ steps.setup-java-11.outputs.path }}" >> $GITHUB_ENV
+
+      - name: Setup gradle properties
+        run: |
+          cat .github/env/${{ runner.os }}/gradle.properties >> gradle.properties
+          echo >> gradle.properties
+          echo "org.gradle.java.installations.paths=${{ steps.setup-java-11.outputs.path }}" >> gradle.properties
+          cat gradle.properties
+
+      - name: Generate Go Docs
+        uses: burrunan/gradle-cache-action@v1
+        with:
+          job-id: cppDocs
+          arguments: --scan sphinx:cppClientDocs sphinx:cppExamplesDocs
+          gradle-version: wrapper
+
+      - name: Deploy Client C++ Docs
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: burnett01/rsync-deployments@4.1
+        with:
+          switches: -avzr --delete
+          path: sphinx/build/cppClientDocs/
+          remote_path: deephaven-core/client-api/cpp/
+          remote_host: ${{ secrets.DOCS_HOST }}
+          remote_port: ${{ secrets.DOCS_PORT }}
+          remote_user: ${{ secrets.DOCS_USER }}
+          remote_key: ${{ secrets.DEEPHAVEN_CORE_SSH_KEY }}

@@ -95,6 +95,47 @@ func TestTimeTable(t *testing.T) {
 	}
 }
 
+func TestTimeTableUpload(t *testing.T) {
+	r := test_setup.TimeRecord(time.Now())
+	defer r.Release()
+
+	ctx := context.Background()
+	s, err := client.NewClient(ctx, test_setup.GetHost(), test_setup.GetPort(), "python")
+	if err != nil {
+		t.Fatalf("NewClient err %s", err.Error())
+	}
+	defer s.Close()
+
+	tbl, err := s.ImportTable(ctx, r)
+	if err != nil {
+		t.Errorf("ImportTable err %s", err.Error())
+	}
+
+	rec, err := tbl.Snapshot(ctx)
+	if err != nil {
+		t.Errorf("Snapshot err %s", err.Error())
+	}
+	defer rec.Release()
+
+	if r.NumRows() != rec.NumRows() || r.NumCols() != rec.NumCols() {
+		t.Log("Expected:")
+		t.Log(r)
+		t.Log("Actual:")
+		t.Log(rec)
+		t.Errorf("uploaded and snapshotted table differed (%d x %d vs %d x %d)", r.NumRows(), r.NumCols(), rec.NumRows(), rec.NumCols())
+		return
+	}
+
+	for col := 0; col < int(r.NumCols()); col += 1 {
+		expCol := r.Column(col)
+		actCol := rec.Column(col)
+
+		if expCol.DataType() != actCol.DataType() {
+			t.Error("DataType differed", expCol.DataType(), " and ", actCol.DataType())
+		}
+	}
+}
+
 func TestTableUpload(t *testing.T) {
 	r := test_tools.ExampleRecord()
 	defer r.Release()

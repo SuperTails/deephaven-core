@@ -6,11 +6,34 @@ import (
 	"math/rand"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/apache/arrow/go/v8/arrow"
 	"github.com/apache/arrow/go/v8/arrow/array"
 	"github.com/apache/arrow/go/v8/arrow/memory"
 )
+
+func TimeRecord(t time.Time) arrow.Record {
+	pool := memory.NewGoAllocator()
+
+	schema := arrow.NewSchema(
+		[]arrow.Field{
+			{Name: "Time", Type: &arrow.Time64Type{Unit: arrow.Nanosecond}},
+		},
+		nil,
+	)
+
+	b := array.NewRecordBuilder(pool, schema)
+	defer b.Release()
+
+	t0 := arrow.Time64(t.UnixNano() - time.Second.Nanoseconds())
+	t1 := arrow.Time64(t.UnixNano())
+	t2 := arrow.Time64(t.UnixNano() + time.Second.Nanoseconds())
+
+	b.Field(0).(*array.Time64Builder).AppendValues([]arrow.Time64{t0, t1, t2}, nil)
+
+	return b.NewRecord()
+}
 
 // ExampleRecord creates an arrow Record with some arbitrary data, used for testing.
 // The returned Record should be released when it is not needed anymore.

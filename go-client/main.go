@@ -14,8 +14,8 @@ func main() {
 	cl, err := client.NewClient(ctx, "localhost", "10000", "python")
 	fmt.Println(err)
 
-	q1 := cl.TimeTableQuery(time.Second, time.Now()).Update("foo = i")
-	q2 := client.MergeQuery("", q1, q1)
+	q1 := cl.TimeTableQuery(time.Second, time.Now()).Update("foo = i % 10").Tail(5).Where("foo < 5")
+	q2 := client.MergeQuery("", q1)
 
 	tbls, err := cl.ExecBatch(ctx, q2)
 	fmt.Println(err)
