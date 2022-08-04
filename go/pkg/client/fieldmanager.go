@@ -2,8 +2,10 @@ package client
 
 import (
 	"context"
+	"fmt"
 
 	apppb2 "github.com/deephaven/deephaven-core/go/internal/proto/application"
+	ticketpb2 "github.com/deephaven/deephaven-core/go/internal/proto/ticket"
 )
 
 // A fieldId is a unique identifier for a field on the server,
@@ -78,23 +80,21 @@ func (client *Client) getFields(ctx context.Context) ([]*apppb2.FieldInfo, error
 	return changes.Created, nil
 }
 
-// getTable returns the table with the given ID, if it is present on the server.
-// If the table is not present, the returned table pointer will be nil.
-// The returned table handle is not exported, so TableHandle.Release should not be called on it.
-// Instead, use OpenTable or fetchTable to get an exported TableHandle that can be returned to the user.
+// getTable returns a "mock" table with the given ID.
+// This doesn't check if the table is present on the server, and doesn't actually open any tables.
+// This should be passed directly to OpenTable or fetchTable to get an exported TableHandle that can be returned to the user.
 func (client *Client) getTable(ctx context.Context, id fieldId) (*TableHandle, error) {
-	fields, err := client.getFields(ctx)
-	if err != nil {
-		return nil, err
+	var ticketId []byte
+	if id.appId == "scope" {
+		ticketId = []byte(fmt.Sprintf("s/%s", id.fieldName))
+	} else {
+		// FIXME: This might be wrong.
+		ticketId = []byte(fmt.Sprintf("a/%s/%s", id.appId, id.fieldName))
 	}
 
-	for _, f := range fields {
-		if f.ApplicationId == id.appId && f.FieldName == id.fieldName && f.TypedTicket.Type == "Table" {
-			return newBorrowedTableHandle(client, f.TypedTicket.Ticket, nil, 0, false), nil
-		}
-	}
+	ticket := &ticketpb2.Ticket{Ticket: ticketId}
 
-	return nil, nil
+	return newBorrowedTableHandle(client, ticket, nil, 0, false), nil
 }
 
 // ListOpenableTables returns a list of the (global) tables that can be opened with OpenTable.

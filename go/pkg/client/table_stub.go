@@ -10,10 +10,29 @@ import (
 	"github.com/apache/arrow/go/v8/arrow/flight"
 	"github.com/apache/arrow/go/v8/arrow/memory"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	tablepb2 "github.com/deephaven/deephaven-core/go/internal/proto/table"
 	ticketpb2 "github.com/deephaven/deephaven-core/go/internal/proto/ticket"
 )
+
+// Returned by OpenTable when trying to open a table that does not exist on the server.
+type TableNotFoundError struct {
+	id fieldId
+}
+
+func newTableNotFoundError(id fieldId) TableNotFoundError {
+	return TableNotFoundError{id: id}
+}
+
+func (err TableNotFoundError) Error() string {
+	if err.id.appId == "scope" {
+		return fmt.Sprintf("no global table named `%s` could be found", err.id.fieldName)
+	} else {
+		return fmt.Sprintf("no table in application `%s` with name `%s` could be found", err.id.appId, err.id.fieldName)
+	}
+}
 
 // A tableStub wraps table.proto gRPC requests.
 type tableStub struct {
@@ -146,6 +165,7 @@ func (ts *tableStub) fetchTable(ctx context.Context, oldTable *TableHandle) (*Ta
 }
 
 // OpenTable opens a globally-scoped table with the given name on the server.
+// This may return a TableNotFoundError if there is no such table with the given name.
 func (ts *tableStub) OpenTable(ctx context.Context, name string) (*TableHandle, error) {
 	fieldId := fieldId{appId: "scope", fieldName: name}
 	tbl, err := ts.client.getTable(ctx, fieldId)
@@ -153,11 +173,11 @@ func (ts *tableStub) OpenTable(ctx context.Context, name string) (*TableHandle, 
 		return nil, err
 	}
 
-	if tbl != nil {
-		return ts.fetchTable(ctx, tbl)
-	} else {
-		return nil, errors.New("no table by the name " + name)
+	fetchedTbl, err := ts.fetchTable(ctx, tbl)
+	if st, ok := status.FromError(err); ok && st.Code() == codes.InvalidArgument {
+		return nil, newTableNotFoundError(fieldId)
 	}
+	return fetchedTbl, nil
 }
 
 // EmptyTableQuery is like EmptyTable, except it can be used as part of a query graph.

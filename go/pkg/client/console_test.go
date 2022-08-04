@@ -8,6 +8,19 @@ import (
 	"github.com/deephaven/deephaven-core/go/pkg/client"
 )
 
+func TestOpenMissingTable(t *testing.T) {
+	ctx := context.Background()
+
+	c, err := client.NewClient(ctx, test_tools.GetHost(), test_tools.GetPort(), client.WithConsole("python"))
+	test_tools.CheckError(t, "NewClient", err)
+
+	_, err = c.OpenTable(ctx, "thistablereallydoesnotexist")
+	if _, ok := err.(client.TableNotFoundError); !ok {
+		t.Errorf("wrong or missing error %s", err)
+		return
+	}
+}
+
 func TestOpenTable(t *testing.T) {
 	ctx := context.Background()
 
