@@ -88,8 +88,7 @@ func (client *Client) getTable(ctx context.Context, id fieldId) (*TableHandle, e
 	if id.appId == "scope" {
 		ticketId = []byte(fmt.Sprintf("s/%s", id.fieldName))
 	} else {
-		// FIXME: This might be wrong.
-		ticketId = []byte(fmt.Sprintf("a/%s/%s", id.appId, id.fieldName))
+		ticketId = []byte(fmt.Sprintf("a/%s/f/%s", id.appId, id.fieldName))
 	}
 
 	ticket := &ticketpb2.Ticket{Ticket: ticketId}
